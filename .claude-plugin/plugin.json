@@ -1,7 +1,7 @@
 {
   "name": "containerpowers",
   "description": "Skills library for Claude Code in container-use environments: isolated development, parallel agents, and container workflows",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "author": {
     "name": "Didrik A. R.",
     "email": "3679075+dizk@users.noreply.github.com"
