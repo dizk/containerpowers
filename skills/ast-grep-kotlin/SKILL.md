@@ -52,25 +52,40 @@ ast-grep -p '$X.getUserName()' -r '$X.fetchName()' -l kotlin -U
 
 ## Common Patterns
 
-### Complete Method Rename (definition + call sites)
+### Method Rename (handles any parameter count)
+
+Use `$$$PARAMS` to match methods regardless of parameter count:
 
 ```bash
-# 1. Rename method DEFINITION
-ast-grep -p 'fun getUserName()' -r 'fun fetchName()' -l kotlin -U
+# Interface/class method definitions (any arity)
+ast-grep -p 'fun query($$$PARAMS)' -r 'fun fetch($$$PARAMS)' -l kotlin -U
 
-# 2. Rename CALL SITES with receiver
-ast-grep -p '$X.getUserName()' -r '$X.fetchName()' -l kotlin -U
+# Override methods (implementations)
+ast-grep -p 'override fun query($$$PARAMS)' -r 'override fun fetch($$$PARAMS)' -l kotlin -U
 
-# 3. Rename SELF-CALLS (no receiver)
-ast-grep -p 'getUserName()' -r 'fetchName()' -l kotlin -U
+# Call sites (any argument count)
+ast-grep -p '$X.query($$$ARGS)' -r '$X.fetch($$$ARGS)' -l kotlin -U
 ```
 
-**All three steps needed for complete rename.**
+This single pattern handles `query()`, `query(a)`, `query(a, b)`, etc.
+
+### Simple Method Rename (no parameters)
+
+```bash
+# 1. Definition
+ast-grep -p 'fun getName()' -r 'fun fetchName()' -l kotlin -U
+
+# 2. Calls with receiver
+ast-grep -p '$X.getName()' -r '$X.fetchName()' -l kotlin -U
+
+# 3. Self-calls (no receiver)
+ast-grep -p 'getName()' -r 'fetchName()' -l kotlin -U
+```
 
 ### Other Patterns
 
 ```bash
-# Add parameter
+# Add parameter to all calls
 ast-grep -p 'doWork($$$E)' -r 'doWork($$$E, ctx)' -l kotlin -U
 
 # Null safety
@@ -103,11 +118,15 @@ ast-grep pattern `$X.getUserName()` only matches actual method calls.
 
 **No output = no matches.** If search returns nothing, pattern is wrong. Test with simpler pattern first.
 
-**Forgot method definition.** `$X.method()` only matches calls. Use `fun method()` pattern for definitions.
+**Forgot method definition.** `$X.method()` only matches calls. Use `fun method($$$P)` pattern for definitions.
+
+**Forgot override methods.** `fun method()` doesn't match `override fun method()`. Run both patterns.
 
 **Not installed.** Always run `command -v ast-grep` first. In containers: `npm install -g @ast-grep/cli`
 
 **Pattern too specific.** If `fun $N(): String` doesn't match, try `fun $N()` - return type annotation is optional in Kotlin.
+
+**Similar method names.** Pattern `$X.find()` won't accidentally match `$X.findById()` - AST matching is precise.
 
 ## Installation
 
