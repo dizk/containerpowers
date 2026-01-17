@@ -1,13 +1,13 @@
 {
-  "name": "superpowers",
-  "description": "Core skills library for Claude Code: TDD, debugging, collaboration patterns, and proven techniques",
-  "version": "4.0.3",
+  "name": "containerpowers",
+  "description": "Skills library for Claude Code in container-use environments: isolated development, parallel agents, and container workflows",
+  "version": "1.0.0",
   "author": {
-    "name": "Jesse Vincent",
-    "email": "jesse@fsck.com"
+    "name": "Didrik A. R.",
+    "email": "3679075+dizk@users.noreply.github.com"
   },
-  "homepage": "https://github.com/obra/superpowers",
-  "repository": "https://github.com/obra/superpowers",
+  "homepage": "https://github.com/dizk/containerpowers",
+  "repository": "https://github.com/dizk/containerpowers",
   "license": "MIT",
-  "keywords": ["skills", "tdd", "debugging", "collaboration", "best-practices", "workflows"]
+  "keywords": ["skills", "container-use", "containers", "parallel-agents", "isolation", "workflows"]
 }
