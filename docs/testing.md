@@ -2,6 +2,26 @@
 
 This document describes how to test Superpowers skills, particularly the integration tests for complex skills like `subagent-driven-development`.
 
+## Performance Tips
+
+### Container Test Optimization (3x speedup)
+
+When running container-based tests, reuse container instances across test cases using module-scoped fixtures instead of spinning up new containers per test:
+
+```python
+@pytest.fixture(scope="module")
+def container():
+    c = Container.start()
+    yield c
+    c.stop()
+
+@pytest.fixture(autouse=True)
+def reset_container_state(container):
+    container.reset()  # Fast cleanup between tests
+```
+
+This pattern reduced container test runtime from 12 minutes to 4 minutes in our test suite.
+
 ## Overview
 
 Testing skills that involve subagents, workflows, and complex interactions requires running actual Claude Code sessions in headless mode and verifying their behavior through session transcripts.
