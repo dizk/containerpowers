@@ -1,33 +1,33 @@
 ---
 name: dispatching-parallel-agents
-description: Use when facing 2+ independent tasks that can be worked on without shared state or sequential dependencies
+description: Use when facing 2+ independent tasks that can be worked on in separate containers without shared state
 ---
 
 # Dispatching Parallel Agents
 
 ## Overview
 
-When you have multiple unrelated failures (different test files, different subsystems, different bugs), investigating them sequentially wastes time. Each investigation is independent and can happen in parallel.
+When you have multiple unrelated tasks (different test files, different subsystems, different features), working them sequentially wastes time. Each task is independent and can happen in parallel — in separate container environments.
 
-**Core principle:** Dispatch one agent per independent problem domain. Let them work concurrently.
+**Core principle:** Dispatch one container per independent problem domain. Let them work concurrently.
 
 ## When to Use
 
 ```dot
 digraph when_to_use {
-    "Multiple failures?" [shape=diamond];
+    "Multiple tasks?" [shape=diamond];
     "Are they independent?" [shape=diamond];
-    "Single agent investigates all" [shape=box];
-    "One agent per problem domain" [shape=box];
-    "Can they work in parallel?" [shape=diamond];
-    "Sequential agents" [shape=box];
+    "Single container handles all" [shape=box];
+    "One container per domain" [shape=box];
+    "Would containers interfere?" [shape=diamond];
+    "Sequential containers" [shape=box];
     "Parallel dispatch" [shape=box];
 
-    "Multiple failures?" -> "Are they independent?" [label="yes"];
-    "Are they independent?" -> "Single agent investigates all" [label="no - related"];
-    "Are they independent?" -> "Can they work in parallel?" [label="yes"];
-    "Can they work in parallel?" -> "Parallel dispatch" [label="yes"];
-    "Can they work in parallel?" -> "Sequential agents" [label="no - shared state"];
+    "Multiple tasks?" -> "Are they independent?" [label="yes"];
+    "Are they independent?" -> "Single container handles all" [label="no - related"];
+    "Are they independent?" -> "Would containers interfere?" [label="yes"];
+    "Would containers interfere?" -> "Sequential containers" [label="yes - shared state"];
+    "Would containers interfere?" -> "Parallel dispatch" [label="no"];
 }
 ```
 
@@ -40,51 +40,75 @@ digraph when_to_use {
 **Don't use when:**
 - Failures are related (fix one might fix others)
 - Need to understand full system state
-- Agents would interfere with each other
+- Containers would interfere (editing same files)
 
 ## The Pattern
 
 ### 1. Identify Independent Domains
 
-Group failures by what's broken:
+Group tasks by what's broken:
 - File A tests: Tool approval flow
 - File B tests: Batch completion behavior
 - File C tests: Abort functionality
 
-Each domain is independent - fixing tool approval doesn't affect abort tests.
+Each domain is independent — fixing tool approval doesn't affect abort tests.
 
-### 2. Create Focused Agent Tasks
+### 2. Create Focused Container Tasks
 
-Each agent gets:
+Each container gets:
 - **Specific scope:** One test file or subsystem
 - **Clear goal:** Make these tests pass
 - **Constraints:** Don't change other code
-- **Expected output:** Summary of what you found and fixed
+- **Commit when done:** Work is tracked on container's branch
 
-### 3. Dispatch in Parallel
+### 3. Dispatch to Containers
 
-```typescript
-// In Claude Code / AI environment
-Task("Fix agent-tool-abort.test.ts failures")
-Task("Fix batch-completion-behavior.test.ts failures")
-Task("Fix tool-approval-race-conditions.test.ts failures")
-// All three run concurrently
+Each independent task runs in its own isolated container environment:
+
+```
+Container 1 → Fix agent-tool-abort.test.ts
+Container 2 → Fix batch-completion-behavior.test.ts
+Container 3 → Fix tool-approval-race-conditions.test.ts
 ```
 
-### 4. Review and Integrate
+All three run concurrently in isolation.
 
-When agents return:
-- Read each summary
-- Verify fixes don't conflict
-- Run full test suite
-- Integrate all changes
+### 4. Monitor Progress
 
-## Agent Prompt Structure
+Tell the user how to track container work:
 
-Good agent prompts are:
-1. **Focused** - One clear problem domain
-2. **Self-contained** - All context needed to understand the problem
-3. **Specific about output** - What should the agent return?
+```
+To see all environments: container-use list
+To watch progress: container-use watch {id}
+To see command history: container-use log {id}
+```
+
+### 5. Review and Integrate
+
+When containers complete, guide the user through review and merge:
+
+```
+Container work complete. To review and integrate:
+
+1. Review each container's changes:
+   container-use diff {id1}
+   container-use diff {id2}
+   container-use diff {id3}
+
+2. Merge each (after review):
+   container-use merge {id1}
+   container-use merge {id2}
+   container-use merge {id3}
+
+3. Run full test suite on merged result
+```
+
+## Task Prompt Structure
+
+Good container task prompts are:
+1. **Focused** — One clear problem domain
+2. **Self-contained** — All context needed to understand the problem
+3. **Commit when done** — Work tracked on branch
 
 ```markdown
 Fix the 3 failing tests in src/agents/agent-tool-abort.test.ts:
@@ -104,77 +128,49 @@ These are timing/race condition issues. Your task:
 
 Do NOT just increase timeouts - find the real issue.
 
-Return: Summary of what you found and what you fixed.
+Commit when tests pass.
 ```
 
 ## Common Mistakes
 
-**❌ Too broad:** "Fix all the tests" - agent gets lost
-**✅ Specific:** "Fix agent-tool-abort.test.ts" - focused scope
+**❌ Too broad:** "Fix all the tests" — agent gets lost
+**✅ Specific:** "Fix agent-tool-abort.test.ts" — focused scope
 
-**❌ No context:** "Fix the race condition" - agent doesn't know where
+**❌ No context:** "Fix the race condition" — agent doesn't know where
 **✅ Context:** Paste the error messages and test names
 
-**❌ No constraints:** Agent might refactor everything
-**✅ Constraints:** "Do NOT change production code" or "Fix tests only"
+**❌ Skip monitoring:** Assume containers succeeded
+**✅ Verify:** Use `container-use diff` and `log` before merging
 
-**❌ Vague output:** "Fix it" - you don't know what changed
-**✅ Specific:** "Return summary of root cause and changes"
+**❌ Merge without review:** Just run `merge` for all containers
+**✅ Review each:** Check diff for each container before merging
 
 ## When NOT to Use
 
-**Related failures:** Fixing one might fix others - investigate together first
+**Related failures:** Fixing one might fix others — investigate together first
 **Need full context:** Understanding requires seeing entire system
 **Exploratory debugging:** You don't know what's broken yet
-**Shared state:** Agents would interfere (editing same files, using same resources)
-
-## Real Example from Session
-
-**Scenario:** 6 test failures across 3 files after major refactoring
-
-**Failures:**
-- agent-tool-abort.test.ts: 3 failures (timing issues)
-- batch-completion-behavior.test.ts: 2 failures (tools not executing)
-- tool-approval-race-conditions.test.ts: 1 failure (execution count = 0)
-
-**Decision:** Independent domains - abort logic separate from batch completion separate from race conditions
-
-**Dispatch:**
-```
-Agent 1 → Fix agent-tool-abort.test.ts
-Agent 2 → Fix batch-completion-behavior.test.ts
-Agent 3 → Fix tool-approval-race-conditions.test.ts
-```
-
-**Results:**
-- Agent 1: Replaced timeouts with event-based waiting
-- Agent 2: Fixed event structure bug (threadId in wrong place)
-- Agent 3: Added wait for async tool execution to complete
-
-**Integration:** All fixes independent, no conflicts, full suite green
-
-**Time saved:** 3 problems solved in parallel vs sequentially
+**Shared state:** Containers would interfere (editing same files)
 
 ## Key Benefits
 
-1. **Parallelization** - Multiple investigations happen simultaneously
-2. **Focus** - Each agent has narrow scope, less context to track
-3. **Independence** - Agents don't interfere with each other
-4. **Speed** - 3 problems solved in time of 1
+1. **True isolation** — Each container has its own branch, no interference
+2. **Parallelization** — Multiple investigations happen simultaneously
+3. **Visibility** — Full command history via `container-use log`
+4. **Safe integration** — Review with `diff` before merging
 
 ## Verification
 
-After agents return:
-1. **Review each summary** - Understand what changed
-2. **Check for conflicts** - Did agents edit same code?
-3. **Run full suite** - Verify all fixes work together
-4. **Spot check** - Agents can make systematic errors
+Before merging containers:
 
-## Real-World Impact
+1. **Review each diff** — `container-use diff {id}` for each
+2. **Check for conflicts** — Did containers edit same files?
+3. **Merge sequentially** — `container-use merge {id}` one at a time
+4. **Run full suite** — Verify all fixes work together
 
-From debugging session (2025-10-03):
-- 6 failures across 3 files
-- 3 agents dispatched in parallel
-- All investigations completed concurrently
-- All fixes integrated successfully
-- Zero conflicts between agent changes
+## Integration
+
+**Uses:**
+- **monitoring-container-agents** — Track container progress
+- **verification-before-completion** — Verify before claiming success
+- **finishing-a-development-branch** — For final merge decisions

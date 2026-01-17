@@ -1,50 +1,56 @@
 ---
 name: finishing-a-development-branch
-description: Use when implementation is complete, all tests pass, and you need to decide how to integrate the work - guides completion of development work by presenting structured options for merge, PR, or cleanup
+description: Use when implementation is complete in a container environment, when tempted to skip diff review, or when ready to integrate container work
 ---
 
 # Finishing a Development Branch
 
 ## Overview
 
-Guide completion of development work by presenting clear options and handling chosen workflow.
+Guide completion of container work by presenting clear options and handling chosen workflow.
 
-**Core principle:** Verify tests → Present options → Execute choice → Clean up.
+**Core principle:** Verify tests → Review diff → Present options → Execute choice.
 
 **Announce at start:** "I'm using the finishing-a-development-branch skill to complete this work."
+
+## The Iron Law
+
+```
+ALWAYS REVIEW DIFF BEFORE PRESENTING OPTIONS. NO EXCEPTIONS.
+```
+
+Not "if user wants to see it." Not "if time permits." **Always.**
+
+| Rationalization | Reality |
+|-----------------|---------|
+| "User wants to move on quickly" | User wants to know what they're merging. Show diff. |
+| "Tests passed, should be good" | Passing tests ≠ correct implementation. Review changes. |
+| "Adds steps user might not want" | User DOES want to see changes before committing to them. |
+| "Showing diff slows things down" | Merging wrong code slows things down more. |
 
 ## The Process
 
 ### Step 1: Verify Tests
 
-**Before presenting options, verify tests pass:**
+**Before anything else, verify tests pass in the container.**
 
-```bash
-# Run project's test suite
-npm test / cargo test / pytest / go test ./...
-```
-
-**If tests fail:**
-```
-Tests failing (<N> failures). Must fix before completing:
-
-[Show failures]
-
-Cannot proceed with merge/PR until tests pass.
-```
-
-Stop. Don't proceed to Step 2.
+**If tests fail:** Stop. Fix tests first.
 
 **If tests pass:** Continue to Step 2.
 
-### Step 2: Determine Base Branch
+### Step 2: Review Diff (MANDATORY)
 
-```bash
-# Try common base branches
-git merge-base HEAD main 2>/dev/null || git merge-base HEAD master 2>/dev/null
+Tell the user to review changes:
+
+```
+I've completed the implementation. Please review the changes:
+
+container-use diff {id}
 ```
 
-Or ask: "This branch split from main - is that correct?"
+**Summarize what you changed.** Describe the modifications you made so the user knows what to expect in the diff.
+
+This step is NOT optional. Don't skip it because "user wants speed."
 
 ### Step 3: Present Options
 
@@ -53,148 +59,87 @@ Present exactly these 4 options:
 ```
 Implementation complete. What would you like to do?
 
-1. Merge back to <base-branch> locally
-2. Push and create a Pull Request
-3. Keep the branch as-is (I'll handle it later)
+1. Merge changes (keeps commit history)
+2. Apply changes (stages as new commit)
+3. Keep the environment (I'll handle it later)
 4. Discard this work
 
 Which option?
 ```
 
-**Don't add explanation** - keep options concise.
-
 ### Step 4: Execute Choice
 
-#### Option 1: Merge Locally
+Tell the user which command to run based on their choice:
 
-```bash
-# Switch to base branch
-git checkout <base-branch>
+#### Option 1: Merge
 
-# Pull latest
-git pull
-
-# Merge feature branch
-git merge <feature-branch>
-
-# Verify tests on merged result
-<test command>
-
-# If tests pass
-git branch -d <feature-branch>
+```
+To merge with commit history preserved:
+container-use merge {id}
 ```
 
-Then: Cleanup worktree (Step 5)
+#### Option 2: Apply
 
-#### Option 2: Push and Create PR
-
-```bash
-# Push branch
-git push -u origin <feature-branch>
-
-# Create PR
-gh pr create --title "<title>" --body "$(cat <<'EOF'
-## Summary
-<2-3 bullets of what changed>
-
-## Test Plan
-- [ ] <verification steps>
-EOF
-)"
 ```
-
-Then: Cleanup worktree (Step 5)
+To stage changes for a new commit:
+container-use apply {id}
+```
 
 #### Option 3: Keep As-Is
 
-Report: "Keeping branch <name>. Worktree preserved at <path>."
-
-**Don't cleanup worktree.**
+Report: "Keeping environment {id}. Use `container-use list` to see it later."
 
 #### Option 4: Discard
 
 **Confirm first:**
 ```
-This will permanently delete:
-- Branch <name>
-- All commits: <commit-list>
-- Worktree at <path>
-
-Type 'discard' to confirm.
+This will permanently delete environment {id} and all changes.
+Type 'discard' to confirm, then run:
+container-use delete {id}
 ```
 
-Wait for exact confirmation.
-
-If confirmed:
-```bash
-git checkout <base-branch>
-git branch -D <feature-branch>
-```
-
-Then: Cleanup worktree (Step 5)
-
-### Step 5: Cleanup Worktree
-
-**For Options 1, 2, 4:**
-
-Check if in worktree:
-```bash
-git worktree list | grep $(git branch --show-current)
-```
-
-If yes:
-```bash
-git worktree remove <worktree-path>
-```
-
-**For Option 3:** Keep worktree.
+Wait for typed confirmation before providing the delete command.
 
 ## Quick Reference
 
-| Option | Merge | Push | Keep Worktree | Cleanup Branch |
-|--------|-------|------|---------------|----------------|
-| 1. Merge locally | ✓ | - | - | ✓ |
-| 2. Create PR | - | ✓ | ✓ | - |
-| 3. Keep as-is | - | - | ✓ | - |
-| 4. Discard | - | - | - | ✓ (force) |
+| Option | Command | Keeps History | Environment |
+|--------|---------|---------------|-------------|
+| 1. Merge | `merge {id}` | Yes | Deleted |
+| 2. Apply | `apply {id}` | No (new commit) | Deleted |
+| 3. Keep | None | N/A | Preserved |
+| 4. Discard | `delete {id}` | N/A | Deleted |
+
+## Red Flags - STOP
+
+If you're thinking:
+- "User wants to wrap up, skip the diff"
+- "Tests passed so changes are fine"
+- "Showing diff adds unnecessary steps"
+- "I'll just merge directly"
+
+**STOP.** Review the diff. Always.
 
 ## Common Mistakes
 
+**Skipping diff review**
+- **Problem:** User merges changes they didn't actually review
+- **Fix:** ALWAYS run and summarize `container-use diff` before options
+
 **Skipping test verification**
-- **Problem:** Merge broken code, create failing PR
-- **Fix:** Always verify tests before offering options
-
-**Open-ended questions**
-- **Problem:** "What should I do next?" → ambiguous
-- **Fix:** Present exactly 4 structured options
-
-**Automatic worktree cleanup**
-- **Problem:** Remove worktree when might need it (Option 2, 3)
-- **Fix:** Only cleanup for Options 1 and 4
+- **Problem:** Merge broken code
+- **Fix:** Always verify tests before reviewing diff
 
 **No confirmation for discard**
 - **Problem:** Accidentally delete work
 - **Fix:** Require typed "discard" confirmation
-
-## Red Flags
-
-**Never:**
-- Proceed with failing tests
-- Merge without verifying tests on result
-- Delete work without confirmation
-- Force-push without explicit request
-
-**Always:**
-- Verify tests before offering options
-- Present exactly 4 options
-- Get typed confirmation for Option 4
-- Clean up worktree for Options 1 & 4 only
 
 ## Integration
 
 **Called by:**
 - **subagent-driven-development** (Step 7) - After all tasks complete
 - **executing-plans** (Step 5) - After all batches complete
+- **dispatching-parallel-agents** - After containers complete
 
 **Pairs with:**
-- **using-git-worktrees** - Cleans up worktree created by that skill
+- **monitoring-container-agents** - Review work before finishing
+- **verification-before-completion** - Ensure tests actually pass
