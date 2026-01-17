@@ -143,3 +143,4 @@ If you're thinking:
 **Pairs with:**
 - **monitoring-container-agents** - Review work before finishing
 - **verification-before-completion** - Ensure tests actually pass
+- **capturing-learnings** - Capture patterns and gotchas before closing work
