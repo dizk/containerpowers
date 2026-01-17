@@ -1,42 +1,40 @@
 ---
 name: ast-grep-kotlin
-description: Use when refactoring Kotlin code, renaming methods, migrating APIs, or editing code in container-use environments where Edit tool may be unavailable
+description: Use when editing Kotlin code in container-use environments where the Edit tool is unavailable
 ---
 
 # ast-grep for Kotlin
 
 ## Overview
 
-ast-grep performs structural code search and rewrite using Abstract Syntax Trees. Unlike text-based find/replace, it matches code semantically.
+ast-grep performs structural code search and rewrite using Abstract Syntax Trees via bash commands.
 
-**Core insight:** ast-grep provides reliable code modification via bash, independent of editor tooling. Essential in container-use environments where Edit capabilities may be limited.
+**Why this matters:** In container-use environments, the Edit tool may not be available. ast-grep gives you powerful code modification through bash alone.
 
 ## When to Use
 
 **Use ast-grep when:**
-- Working in container-use environment (Edit tool unavailable/limited)
-- Refactoring across multiple files
-- Pattern-based changes (all calls to X become Y)
-- Want to preview changes before applying
+- Edit tool is unavailable (container-use environments)
+- Need to preview all changes before applying
+- Want AST-aware matching (won't hit strings/comments)
 
-**Use Edit tool when (local filesystem only):**
-- Change requires context-specific logic per file
-- One-off fix in single file
-- Edit tool is available and reliable
+**Use Edit tool when available:**
+- Edit tool works fine for refactoring with `replace_all`
+- ast-grep is not about "efficiency" - it's about working without Edit
 
 ## Workflow
 
 ```bash
-# 1. Check installation
-command -v ast-grep || echo "Install: brew install ast-grep"
+# 1. Check/install (container-use)
+command -v ast-grep || npm install -g @ast-grep/cli
 
-# 2. Search - verify pattern matches what you expect
+# 2. Search - verify pattern matches
 ast-grep -p '$X.getUserName()' -l kotlin
 
 # 3. Preview - see diff without modifying
 ast-grep -p '$X.getUserName()' -r '$X.fetchName()' -l kotlin
 
-# 4. Apply - only after reviewing preview
+# 4. Apply
 ast-grep -p '$X.getUserName()' -r '$X.fetchName()' -l kotlin -U
 ```
 
